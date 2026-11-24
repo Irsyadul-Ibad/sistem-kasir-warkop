@@ -17,7 +17,7 @@ class RoleMiddleware
     {
         $user = $request->user();
 
-        if (! $user || $user->is_active){
+        if (! $user || ! $user->is_active){
             return response()->json(['message' => 'akun tidak ditemukan atau tidak aktif'], 403);
         }
 
