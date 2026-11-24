@@ -1,0 +1,346 @@
+PRD - SISTEM KASIR & KEUANGAN WARKOP
+Versi 1.1 (Draft, ditambah QR meja) | 24 November 2026 | Status: MVP
+================================================================
+
+1. RINGKASAN
+----------------------------------------------------------------
+Warkop kecil umumnya masih mencatat pesanan dan pembayaran secara manual
+(kertas atau ingatan). Akibatnya pemasukan dan pengeluaran tidak terekap,
+uang usaha bercampur dengan uang pribadi, utang pelanggan (bon) sering
+terlupa, dan pemilik tidak tahu laba bersih sebenarnya.
+
+Produk ini terdiri dari dua bagian yang berbagi satu backend:
+- Web (Laravel + PostgreSQL/MySQL): REST API dan dashboard untuk pemilik
+  (laporan, manajemen menu, pengguna, meja/QR).
+- Aplikasi (React, PWA): aplikasi kasir yang cepat dipakai di HP, tablet,
+  atau browser laptop, mendukung mode offline.
+
+2. TUJUAN DAN METRIK KEBERHASILAN
+----------------------------------------------------------------
+- Semua transaksi tercatat digital: 100% transaksi harian tercatat setelah
+  2 minggu pemakaian.
+- Kasir cepat: satu transaksi selesai kurang dari 30 detik.
+- Pemilik tahu laba: laporan laba harian tersedia otomatis.
+- Bon terkendali: seluruh bon tercatat dan bisa dilacak statusnya.
+- Andal saat sinyal buruk: transaksi tetap bisa dibuat offline dan
+  tersinkron tanpa duplikasi.
+
+Di luar cakupan MVP: pembayaran QRIS otomatis lewat payment gateway
+(tahap 2), stok bahan baku otomatis, multi-cabang, integrasi printer
+thermal otomatis.
+Masuk MVP (tahap 1): pemesanan lewat QR meja dengan pembayaran di kasir.
+
+3. PENGGUNA (PERSONA)
+----------------------------------------------------------------
+1. Pemilik (Owner): melihat omzet, pengeluaran, dan laba; mengelola menu,
+   akun karyawan, dan meja/QR. Memakai dashboard web, sesekali aplikasi.
+2. Kasir/Barista (Cashier): menginput pesanan, menerima pembayaran,
+   mencatat bon. Hanya memakai aplikasi. Tidak boleh melihat laporan laba
+   atau mengubah harga.
+
+Pelanggan (tamu) bukan pengguna sistem: tidak punya akun dan tidak login.
+Mereka memesan lewat QR meja atau langsung ke kasir. Data pelanggan (nama,
+telepon) dicatat hanya bila perlu, misalnya untuk bon.
+
+4. PERAN DAN HAK AKSES
+----------------------------------------------------------------
+Fitur                       Owner   Cashier
+Transaksi kasir             Ya      Ya
+Catat pengeluaran           Ya      Ya (miliknya, tidak bisa hapus)
+Kelola menu dan harga       Ya      Tidak (lihat saja)
+Kelola bon                  Ya      Catat dan terima pelunasan
+Laporan dan dashboard       Ya      Ringkasan harian shift sendiri
+Kelola pengguna             Ya      Tidak
+Void transaksi              Ya      Perlu persetujuan owner
+
+4.1 Gerbang Akses: Crew vs Pelanggan
+- Crew (owner, kasir): masuk lewat layar login (username/password atau
+  PIN). Wajib punya akun (tabel users). Mengakses aplikasi kasir dan
+  dashboard owner. Hak akses sesuai peran.
+- Pelanggan: masuk lewat scan QR meja. Tidak ada akun. Alamat /m/{token}
+  (halaman publik). Bisa melihat menu, mengirim pesanan, dan melihat
+  status pesanannya sendiri. Tidak bisa melihat data lain, laporan, atau
+  pesanan orang lain.
+Peran diperiksa di server (Sanctum dan Policy) pada setiap request, bukan
+hanya disembunyikan di UI. Token meja tidak bisa dipakai untuk API crew.
+
+5. KEBUTUHAN FUNGSIONAL
+----------------------------------------------------------------
+5.1 Autentikasi
+- FR-1: Login dengan email/username dan password; token Laravel Sanctum.
+- FR-2: Login owner di web; login kasir di aplikasi (opsional PIN 4-6
+  digit untuk pergantian kasir cepat).
+- FR-3: Sesi dapat dicabut oleh owner.
+
+5.2 Kasir / POS
+- FR-4: Menu per kategori dalam grid besar, dengan pencarian.
+- FR-5: Tambah/kurangi jumlah item, catatan per item, nomor meja atau nama
+  pelanggan (opsional).
+- FR-6: Total dihitung otomatis; diskon nominal/persen bila diizinkan owner.
+- FR-7: Pembayaran: Tunai (kembalian otomatis), QRIS dan Transfer (hanya
+  dicatat sebagai metode), serta Bon.
+- FR-8: Struk digital yang bisa dibagikan (WhatsApp/PDF) atau dicetak
+  lewat browser.
+- FR-9: Riwayat transaksi hari ini dan pencarian transaksi.
+- FR-10: Void transaksi wajib alasan dan tercatat di audit log.
+
+5.3 Pengeluaran
+- FR-11: Input cepat: tanggal, nominal, kategori, catatan, foto nota
+  (opsional).
+- FR-12: Kategori default: Bahan Baku, Operasional (listrik, gas, air),
+  Gaji, Sewa, Peralatan, Lain-lain; owner bisa menambah kategori.
+- FR-13: Owner dapat mengedit atau menghapus pengeluaran; setiap
+  perubahan tercatat.
+
+5.4 Manajemen Menu
+- FR-14: CRUD menu: nama, kategori, harga, foto (opsional), status
+  aktif/nonaktif.
+- FR-15: Menu nonaktif tidak tampil di kasir tetapi tetap ada di riwayat.
+- FR-16: Perubahan harga tidak mengubah transaksi lama (harga disalin ke
+  item transaksi saat dibuat).
+
+5.5 Bon / Utang Pelanggan
+- FR-17: Data pelanggan: nama dan nomor telepon (opsional).
+- FR-18: Transaksi metode Bon menambah saldo utang pelanggan.
+- FR-19: Pelunasan penuh atau cicilan; setiap pembayaran tercatat sebagai
+  pemasukan pada tanggal pelunasan.
+- FR-20: Daftar bon berjalan dengan total utang dan umur utang; filter
+  berdasarkan pelanggan dan status.
+
+5.6 Dashboard dan Laporan (Web Owner)
+- FR-21: Ringkasan periode (hari, minggu, bulan, rentang kustom): total
+  pemasukan, pengeluaran, laba, jumlah transaksi, rata-rata nilai transaksi.
+- FR-22: Grafik tren harian, rincian per metode bayar, menu terlaris,
+  pengeluaran per kategori.
+- FR-23: Laporan penutupan shift/harian: kas awal, penjualan tunai,
+  pengeluaran tunai, kas seharusnya, kas aktual, selisih.
+- FR-24: Ekspor laporan ke Excel dan PDF.
+
+5.7 Offline dan Sinkronisasi (Aplikasi)
+- FR-25: Aplikasi dapat dipasang (PWA) dan tetap bisa membuat transaksi
+  serta pengeluaran saat offline.
+- FR-26: Data disimpan lokal (IndexedDB) lalu dikirim saat online; setiap
+  transaksi punya client_uuid agar sinkronisasi idempoten.
+- FR-27: Indikator status koneksi dan jumlah data belum tersinkron.
+- FR-28: Data menu di-cache lokal dan diperbarui otomatis saat online.
+
+5.8 Pemesanan via QR Meja (Pelanggan)
+- FR-29: Setiap meja punya QR berisi link https://<domain>/m/{token}.
+  Token acak per meja, bukan nomor meja. Owner dapat membuat ulang token
+  (QR lama langsung tidak berlaku) dan mencetak QR.
+- FR-30: Halaman pelanggan tanpa login dan tanpa instal: menu aktif per
+  kategori, keranjang, catatan per item, nama pemesan (opsional), kirim
+  pesanan. Nomor meja terisi otomatis dari token.
+- FR-31: Pesanan QR masuk berstatus menunggu_konfirmasi (tahap 1: bayar di
+  kasir). Setelah kasir mengonfirmasi dan menerima bayar, statusnya
+  dibayar, lalu diproses, siap, selesai.
+- FR-32: Pesanan yang tidak dikonfirmasi kedaluwarsa otomatis (default 15
+  menit) dan tidak masuk laporan.
+- FR-33: Pelanggan melihat status pesanannya sendiri lewat kode pesanan;
+  tidak bisa melihat pesanan lain.
+- FR-34: Antrean pesanan real-time untuk kasir dan dapur/barista (Laravel
+  Reverb atau Pusher), dengan label asal "Meja 5 - QR" atau "Kasir".
+- FR-35: Pelanggan tanpa HP tetap dilayani langsung oleh kasir lewat POS;
+  pesanannya masuk ke antrean yang sama.
+- FR-36 (tahap 2): pembayaran QRIS otomatis di halaman pelanggan lewat
+  Midtrans/Xendit, dengan webhook untuk menandai lunas.
+- Keamanan halaman publik: rate limit per IP dan per token, harga dan menu
+  divalidasi di server (harga dari klien diabaikan), token tidak memberi
+  akses ke API crew.
+
+5.9 Konsumsi dan Kasbon Crew
+- FR-37: Transaksi dapat ditandai "konsumsi crew" (terhubung ke akun crew)
+  supaya laporan memisahkan penjualan ke pelanggan dari konsumsi internal.
+- FR-38: Kasbon crew dicatat seperti bon, terhubung ke akun crew, dan
+  bisa dipotong dari gaji (dicatat sebagai pengeluaran gaji saat dipotong).
+
+6. KEBUTUHAN NON-FUNGSIONAL
+----------------------------------------------------------------
+- Performa: respons API < 500 ms untuk operasi umum; aplikasi dimuat < 3
+  detik pada jaringan 3G/4G biasa setelah pemasangan.
+- Keamanan: HTTPS wajib, password di-hash (bcrypt/argon2), validasi input
+  di server, rate limiting pada login, proteksi CSRF untuk web, otorisasi
+  berbasis peran di setiap endpoint.
+- Integritas data: nominal uang disimpan sebagai integer (rupiah, tanpa
+  desimal); transaksi dan item dalam satu database transaction; soft
+  delete untuk data keuangan.
+- Audit: perubahan penting (void, edit/hapus pengeluaran, ubah harga)
+  tercatat siapa, kapan, dan nilai sebelum/sesudahnya.
+- Usability: tombol besar, bahasa Indonesia, bisa dipakai satu tangan di
+  HP; kontras warna jelas di tempat terang.
+- Backup: backup database harian otomatis.
+- Zona waktu: Asia/Jakarta (atau sesuai pengaturan outlet).
+
+7. ARSITEKTUR
+----------------------------------------------------------------
+[React PWA - Kasir]  --HTTPS/JSON-->  [Laravel API]  -->  [PostgreSQL/MySQL]
+[Laravel Web - Owner Dashboard]  -----------^
+[Halaman pelanggan /m/{token}]  ------------^  (API publik, rate limit)
+
+- Backend/Web: Laravel 11+, Sanctum, Eloquent, queue untuk ekspor laporan.
+  Dashboard owner memakai Blade + Livewire atau Inertia (pilih satu di
+  awal dan konsisten).
+- Aplikasi: React + Vite, TypeScript, React Router, TanStack Query,
+  Zustand (keranjang), Workbox (service worker), Dexie (IndexedDB).
+- Database: PostgreSQL (disarankan) atau MySQL 8; migrasi kompatibel
+  dengan keduanya.
+- Kontrak API: REST JSON dengan versi /api/v1, didokumentasikan dengan
+  OpenAPI.
+Halaman pelanggan /m/{token} adalah rute publik terpisah (ringan, tanpa
+login) dengan middleware dan rate limit sendiri. Aplikasi kasir dipakai di
+HP, tablet, dan browser laptop dari kode yang sama (PWA, tata letak
+menyesuaikan lebar layar). Antrean pesanan real-time memakai Laravel
+Reverb atau Pusher.
+
+8. MODEL DATA
+----------------------------------------------------------------
+users: id, name, email/username, password, role (owner/cashier), pin_hash,
+  is_active
+categories: id, name, type (menu/expense), sort_order
+menus: id, category_id, name, price (int), image_path, is_active
+customers: id, name, phone, notes
+transactions: id, client_uuid (unique), invoice_no, user_id, customer_id
+  (nullable), table_label, subtotal, discount, total, payment_method,
+  amount_paid, change_amount, status (paid/debt/void), void_reason, paid_at
+transaction_items: id, transaction_id, menu_id, menu_name_snapshot,
+  price_snapshot, qty, note, line_total
+debts: id, customer_id, transaction_id, amount, paid_amount, status
+  (open/partial/paid)
+debt_payments: id, debt_id, amount, method, user_id, paid_at
+expenses: id, category_id, user_id, amount, expense_date, note,
+  receipt_path
+shifts: id, user_id, opening_cash, closing_cash_actual, expected_cash,
+  difference, opened_at, closed_at
+audit_logs: id, user_id, action, entity_type, entity_id, before (json),
+  after (json), created_at
+Indeks: transactions.paid_at, expenses.expense_date,
+  transactions.client_uuid (unique).
+
+Tabel dan kolom tambahan (QR meja dan crew):
+- tables (baru): id, label (mis. "Meja 5"), qr_token (unik, acak),
+  is_active, token_regenerated_at
+- transactions (tambahan): channel (kasir/qr), table_id (nullable),
+  order_status (menunggu_konfirmasi/dibayar/diproses/siap/selesai/
+  kedaluwarsa), expires_at, orderer_name, is_crew_consumption,
+  crew_user_id (nullable)
+- debts (tambahan): debtor_type (customer/crew), crew_user_id (nullable)
+
+9. RANCANGAN ENDPOINT API (RINGKAS)
+----------------------------------------------------------------
+POST        /api/v1/auth/login, /auth/logout     Autentikasi
+GET         /api/v1/menus, /categories           Data menu untuk kasir
+POST/PUT/DELETE /api/v1/menus                    Owner saja
+POST        /api/v1/transactions                 Buat transaksi (idempoten)
+POST        /api/v1/transactions/sync            Batch transaksi offline
+POST        /api/v1/transactions/{id}/void       Void dengan alasan
+GET         /api/v1/transactions                 Riwayat dengan filter
+CRUD        /api/v1/expenses                     Pengeluaran
+GET/POST    /api/v1/customers, /debts, /debts/{id}/payments   Bon
+POST        /api/v1/shifts/open, /shifts/close   Buka/tutup shift
+GET         /api/v1/reports/summary, /top-menus, /cashflow, /export  (owner)
+
+Endpoint tambahan (QR meja):
+GET   /api/public/m/{token}/menu      Publik (rate limit)  Menu aktif, info meja
+POST  /api/public/m/{token}/orders    Publik (rate limit)  Kirim pesanan
+GET   /api/public/orders/{code}       Publik               Status pesanan sendiri
+GET   /api/v1/orders/queue            Crew                 Antrean pesanan
+POST  /api/v1/orders/{id}/confirm     Kasir/owner          Konfirmasi dan bayar
+PATCH /api/v1/orders/{id}/status      Kasir/owner          diproses/siap/selesai
+CRUD  /api/v1/tables                  Owner                Kelola meja dan token
+
+10. ALUR UTAMA
+----------------------------------------------------------------
+1. Transaksi tunai: pilih menu -> cek keranjang -> pilih Tunai -> input
+   uang diterima -> kembalian tampil -> simpan -> struk.
+2. Transaksi bon: pilih menu -> pilih Bon -> pilih/buat pelanggan ->
+   simpan (status debt, saldo utang bertambah).
+3. Pelunasan bon: detail pelanggan -> input nominal dan metode -> saldo
+   berkurang, pemasukan tercatat pada tanggal pelunasan.
+4. Tutup shift: hitung uang di laci -> input kas aktual -> sistem
+   menampilkan selisih -> simpan laporan.
+5. Pesanan via QR meja: pelanggan scan QR -> menu terbuka di browser ->
+   pilih menu dan kirim -> pesanan muncul di antrean kasir (status
+   menunggu_konfirmasi) -> pelanggan bayar di kasir -> kasir konfirmasi ->
+   pesanan masuk ke dapur -> siap diantar -> selesai.
+
+11. ATURAN BISNIS PENTING
+----------------------------------------------------------------
+- Laba = pemasukan (penjualan lunas + pelunasan bon) - pengeluaran pada
+  periode yang sama.
+- Penjualan bon belum dihitung sebagai kas masuk sampai dilunasi, tetapi
+  ditampilkan sebagai piutang.
+- Transaksi yang sudah dibuat tidak dihapus permanen; hanya bisa di-void.
+- Nomor invoice unik per hari, mis. INV-20261124-0001.
+- Kembalian tidak boleh negatif; untuk non-tunai, amount_paid = total.
+- Pesanan QR belum dihitung sebagai pemasukan sebelum dikonfirmasi dan
+  dibayar; pesanan kedaluwarsa tidak masuk laporan.
+- Harga selalu diambil dari database server, bukan dari klien (berlaku
+  juga untuk halaman publik).
+- Konsumsi crew dipisahkan di laporan dari penjualan ke pelanggan.
+- Token meja yang dibuat ulang membuat QR lama langsung tidak berlaku.
+
+12. RENCANA RILIS
+----------------------------------------------------------------
+Fase 0: Wawancara pemilik warkop, finalisasi menu dan alur, desain UI
+        (1 minggu)
+Fase 1: Backend: auth, menu, transaksi, pengeluaran, migrasi dan seeder
+        (2 minggu)
+Fase 2: Aplikasi kasir React (online dulu), struk digital (2 minggu)
+Fase 3: Dashboard owner dan laporan, bon, shift (2 minggu)
+Fase 4: Offline sync (PWA), ekspor, hardening, backup (1-2 minggu)
+Fase 5: Uji coba di warkop nyata 1-2 minggu, perbaikan (2 minggu)
+Pemesanan QR meja (tahap 1, bayar di kasir) dikerjakan setelah POS stabil,
+di sekitar Fase 3-4. Pembayaran QRIS otomatis lewat payment gateway adalah
+tahap 2, setelah alur QR terbukti berjalan di warkop.
+
+13. PENGUJIAN
+----------------------------------------------------------------
+- Backend: Pest/PHPUnit untuk total, kembalian, bon, laporan, hak akses,
+  idempotensi sinkronisasi.
+- Aplikasi: Vitest dan React Testing Library untuk keranjang dan
+  perhitungan; Playwright untuk alur kasir utama dan mode offline.
+- UAT: satu hari operasional penuh bersama kasir asli dan pemilik.
+
+14. RISIKO DAN MITIGASI
+----------------------------------------------------------------
+- Kasir enggan beralih dari catatan manual -> UI sederhana, pelatihan
+  singkat, masa transisi paralel.
+- Sinyal buruk -> mode offline dan sinkronisasi idempoten.
+- Selisih kas -> fitur shift dan laporan selisih.
+- Data hilang -> backup harian, soft delete, audit log.
+- Cakupan melebar -> pegang daftar "di luar MVP", evaluasi setelah uji coba.
+
+15. PERTANYAAN TERBUKA
+----------------------------------------------------------------
+- Apakah aplikasi tetap PWA, atau perlu React Native untuk akses perangkat
+  (printer Bluetooth)?
+- Satu warkop saja, atau perlu banyak outlet sejak awal?
+- Apakah pemilik perlu notifikasi (mis. ringkasan harian lewat WhatsApp)?
+- Basis data final: PostgreSQL atau MySQL?
+
+16. PANDUAN PENGERJAAN MANUAL
+----------------------------------------------------------------
+Sistem ini bisa dikerjakan sendiri secara bertahap. Urutan berikut
+membuat setiap langkah menghasilkan sesuatu yang bisa dicoba.
+
+[ ] Siapkan folder web/ (Laravel) dan app/ (React + Vite), database
+    lokal, dan Git.
+[ ] Backend: migrasi users, categories, menus, seeder owner dan kasir,
+    login Sanctum dengan peran.
+[ ] Backend: transactions dan transaction_items, endpoint buat transaksi
+    (total dihitung di server), lengkap dengan test.
+[ ] Aplikasi: layar login, daftar menu, keranjang, pembayaran tunai.
+[ ] Pengeluaran dan kategori (backend dan aplikasi).
+[ ] Dashboard owner: ringkasan harian dan bulanan.
+[ ] Bon dan pelunasan; konsumsi dan kasbon crew.
+[ ] Shift dan tutup kas.
+[ ] Meja dan QR: tabel tables, halaman publik /m/{token}, konfirmasi
+    kasir, antrean real-time.
+[ ] Mode offline (PWA), ekspor Excel/PDF, backup harian.
+[ ] Uji coba di warkop nyata, lalu pertimbangkan tahap 2 (payment
+    gateway).
+
+Tips: commit kecil per langkah, tulis test untuk perhitungan uang sebelum
+lanjut, dan jangan loncat ke fitur tahap 2 sebelum tahap 1 dipakai kasir
+sungguhan. AGENT.md bisa dipakai sebagai daftar aturan untuk diperiksa
+sendiri.
