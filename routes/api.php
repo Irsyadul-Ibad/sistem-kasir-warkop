@@ -22,19 +22,20 @@ Route::middleware('auth:sanctum')->group(function () {
         //semua crew yang login boleh melihat
         Route::get('menus', [MenuController::class, 'index']);
         Route::get('categories', [CategoryController::class, 'index']);
+        Route::post('transactions', [TransactionController::class, 'store']);
+        Route::get('transactions/{transaction}', [TransactionController::class, 'show']);
+        Route::get('transactions', [TransactionController::class, 'show']);
 
         //hanya owner
-        Route::middleware('role:owner')->group(function () {
-            Route::post('menus', [MenuController::class, 'store']);
-            Route::put('menus/{menu}', [MenuController::class, 'update']);
-            Route::delete('menus/{menu}', [MenuController::class, 'destroy']);
+Route::middleware('role:owner')->group(function () {
+    Route::post('menus', [MenuController::class, 'store']);
+    Route::put('menus/{menu}', [MenuController::class, 'update']);
+    Route::delete('menus/{menu}', [MenuController::class, 'destroy']);
 
             // Route::post('categories', [CategoryController::class, 'store']);
             // Route::put('categories/{category}', [CategoryController::class, 'update']);
             // Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
-            Route::post('transactions', [TransactionController::class, 'store']);
-            Route::get('transactions/{transaction}', [TransactionController::class, 'show']);
-            Route::get('transactions', [TransactionController::class, 'show']);
+           
         });
     });
 });
