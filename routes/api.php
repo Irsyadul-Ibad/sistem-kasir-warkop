@@ -33,6 +33,8 @@ Route::middleware('auth:sanctum')->group(function () {
             // Route::put('categories/{category}', [CategoryController::class, 'update']);
             // Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
             Route::post('transactions', [TransactionController::class, 'store']);
+            Route::get('transactions/{transaction}', [TransactionController::class, 'show']);
+            Route::get('transactions', [TransactionController::class, 'show']);
         });
     });
 });
