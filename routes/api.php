@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\MenuController;
+use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
             // Route::post('categories', [CategoryController::class, 'store']);
             // Route::put('categories/{category}', [CategoryController::class, 'update']);
             // Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+            Route::post('transactions', [TransactionController::class, 'store']);
         });
     });
 });
