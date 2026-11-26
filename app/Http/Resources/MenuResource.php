@@ -21,7 +21,7 @@ class MenuResource extends JsonResource
             'is_active' => $this->is_active,
             'category' => [
                 'id' => $this->category_id,
-                'name' => $this->category_name,
+                'name' => $this->category?->name,
             ],
         ];
     }

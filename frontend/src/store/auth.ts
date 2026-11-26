@@ -1,19 +1,19 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type User = {
-  id: number
-  name: string
-  username: string
-  role: 'owner' | 'cashier'
-}
+  id: number;
+  name: string;
+  username: string;
+  role: "owner" | "cashier";
+};
 
 type AuthState = {
-  token: string | null
-  user: User | null
-  setAuth: (token: string, user: User) => void
-  clear: () => void
-}
+  token: string | null;
+  user: User | null;
+  setAuth: (token: string, user: User) => void;
+  logout: () => void;
+};
 
 export const useAuth = create<AuthState>()(
   persist(
@@ -21,8 +21,8 @@ export const useAuth = create<AuthState>()(
       token: null,
       user: null,
       setAuth: (token, user) => set({ token, user }),
-      clear: () => set({ token: null, user: null }),
+      logout: () => set({ token: null, user: null }),
     }),
-    { name: 'kasir-auth' },
-  ),
-)
+    { name: "auth" }
+  )
+);

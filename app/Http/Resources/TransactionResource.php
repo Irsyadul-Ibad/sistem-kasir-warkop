@@ -14,6 +14,11 @@ class TransactionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        $data = parent::toArray($request);
+        if ($this->relationLoaded('customer')) {
+            $data['customer'] = $this->customer?->only(['id', 'name', 'phone']);
+        }
+
+        return $data;
     }
 }

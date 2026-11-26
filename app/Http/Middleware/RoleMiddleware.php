@@ -17,12 +17,20 @@ class RoleMiddleware
     {
         $user = $request->user();
 
-        if (! $user || ! $user->is_active){
-            return response()->json(['message' => 'akun tidak ditemukan atau tidak aktif'], 403);
+        if (! $user || ! $user->is_active) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Akun tidak ditemukan atau tidak aktif.'], 403);
+            }
+
+            abort(403, 'Akun tidak ditemukan atau tidak aktif.');
         }
 
         if (! in_array($user->role, $roles, true)) {
-            return response()->json(['message' => 'akses ditolak'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Akses ditolak.'], 403);
+            }
+
+            abort(403, 'Akses ditolak.');
         }
 
         return $next($request);

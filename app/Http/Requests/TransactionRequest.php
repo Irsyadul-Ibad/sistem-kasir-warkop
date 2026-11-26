@@ -26,8 +26,10 @@ class TransactionRequest extends FormRequest
         return [
             'client_uuid'    => ['required', 'uuid'],
             'table_label'    => ['nullable', 'string', 'max:50'],
-            'payment_method' => ['required', 'in:cash,qris,transfer'],
+            'payment_method' => ['required', 'in:cash,qris,transfer,debt'],
             'amount_paid'    => ['required_if:payment_method,cash', 'nullable', 'integer', 'min:0'],
+            'customer_name'  => ['required_if:payment_method,debt', 'nullable', 'string', 'max:120'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
             'items'          => ['required', 'array', 'min:1'],
             'items.*.menu_id'=> ['required', 'integer', 'exists:menus,id'],
             'items.*.qty'    => ['required', 'integer', 'min:1', 'max:99'],

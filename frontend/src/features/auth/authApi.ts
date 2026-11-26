@@ -1,30 +1,25 @@
-import { api } from '../../lib/api'
-import type { User } from '../../store/auth'
+const BASE_URL = import.meta.env.VITE_API_URL
 
-type LoginResponse = {
-  token?: string
-  user?: User
-  data?: { token?: string; user?: User }
+type Options = {
+  method?: string
+  body?: unknown
+  token?: string | null
 }
 
-export async function login(username: string, password: string) {
-  const res = await api<LoginResponse>('/login', {
-    method: 'POST',
-    body: { username, password },
+export async function api<T = unknown>(path: string, opts: Options = {}): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: opts.method ?? 'GET',
+    headers: {
+      Accept: 'application/json',
+      ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
   })
 
-  const token = res.token ?? res.data?.token
-  if (!token) throw new Error('Format response login tidak dikenali')
+  if (res.status === 204) return undefined as T
 
-  let user = res.user ?? res.data?.user
-  if (!user) {
-    const me = await api<User | { data: User }>('/auth/me', { token })
-    user = 'data' in me ? me.data : me
-  }
-
-  return { token, user }
-}
-
-export async function logout(token: string) {
-  await api('/auth/logout', { method: 'POST', token })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.message ?? 'Terjadi kesalahan')
+  return data as T
 }

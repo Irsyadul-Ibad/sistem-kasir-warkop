@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    protected $fillable = ['category_id', 'name', 'price', 'image_path', 'is_active'];
+    protected $fillable = ['name', 'type', 'sort_order'];
 
-    public function category()
+    public function menus()
     {
-        return $this->belongsTo(Category::class);
+        return $this->hasMany(Menu::class);
     }
 }

@@ -55,6 +55,13 @@ class TransactionController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        return new TransactionResource($transaction->load('items'));
+        return new TransactionResource($transaction->load(['items', 'customer']));
+    }
+
+    public function void(Request $request, Transaction $transaction, TransactionService $service)
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']]);
+
+        return new TransactionResource($service->void($request->user(), $transaction, $data['reason']));
     }
 }

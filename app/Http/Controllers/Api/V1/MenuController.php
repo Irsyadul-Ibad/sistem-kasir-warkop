@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MenuRequest;
 use App\Http\Resources\MenuResource;
 use App\Models\Menu;
+use App\Services\MenuService;
 use Illuminate\Http\Request;
 
 class MenuController extends Controller
@@ -14,27 +15,25 @@ class MenuController extends Controller
     {
         $query = Menu::with('category')->orderBy('name');
 
-        //kasir hanya melihat menu aktif; owner melihat semua
-        if ($request->user()->role === 'owner') {
+        // POS hanya perlu menu aktif; owner dapat meminta menu nonaktif untuk pengelolaan.
+        if ($request->user()->role !== 'owner' || ! $request->boolean('include_inactive')) {
             $query->where('is_active', true);
         }
 
         return MenuResource::collection($query->get());
     }
 
-    public function store(MenuRequest $request)
+    public function store(MenuRequest $request, MenuService $service)
     {
-        $menu = Menu::create($request->validated());
+        $menu = $service->create($request->user(), $request->validated());
 
-        return (new MenuResource($menu->load('category')))
+        return (new MenuResource($menu))
             ->response()
             ->setStatusCode(201);
     }
 
-    public function update(MenuRequest $request, Menu $menu)
+    public function update(MenuRequest $request, Menu $menu, MenuService $service)
     {
-        $menu->update($request->validated());
-
-        return new MenuResource($menu->load('category'));
+        return new MenuResource($service->update($request->user(), $menu, $request->validated()));
     }
 }

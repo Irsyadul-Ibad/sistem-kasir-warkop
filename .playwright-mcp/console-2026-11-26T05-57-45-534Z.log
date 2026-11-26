@@ -1,0 +1,3 @@
+[  141440ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "username"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:8000/owner/users/2/edit:1
+[  142286ms] [ERROR] Pattern attribute value [A-Za-z0-9_-]+ is not a valid regular expression: Uncaught SyntaxError: Invalid regular expression: /[A-Za-z0-9_-]+/v: Invalid character in character class @ http://localhost:8000/owner/users/2/edit:1
+[  152542ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "username"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:8000/owner/users/create:1
